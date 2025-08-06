@@ -1,0 +1,464 @@
+from flask import Flask, render_template, request, redirect, url_for, session, flash
+from pymongo import MongoClient
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from apscheduler.schedulers.background import BackgroundScheduler
+from datetime import datetime, time as dt_time, timedelta
+import time
+from collections import defaultdict
+from datetime import datetime
+from werkzeug.security import check_password_hash
+from functools import wraps
+import os
+import shutil
+import tempfile
+
+app = Flask(__name__)
+app.secret_key = "rtstudioxcode789y7u4f5sd6dsai2"
+
+MONGO_URI = "mongodb://admin:060843Za@147.50.240.76:27017/"
+DB_NAME = "luv88db"
+client = MongoClient(MONGO_URI)
+db = client[DB_NAME]
+collection = db["deposits"]
+user_collection = db["users"]
+
+SESSION_TIMEOUT = 300
+
+USERNAME = "Boysr"
+PASSWORD = "1234566Xx"
+PREFIX = "luv88"
+
+AUTO_FETCH_HOUR = 0
+AUTO_FETCH_MINUTE = 5
+app.config["AUTO_FETCHING"] = False
+
+def clean_temp_folder():
+    temp_path = tempfile.gettempdir()
+    print(f"Cleaning temp folder: {temp_path}")
+    deleted_count = 0
+    failed = []
+    for filename in os.listdir(temp_path):
+        file_path = os.path.join(temp_path, filename)
+        try:
+            if os.path.isfile(file_path) or os.path.islink(file_path):
+                os.unlink(file_path)
+                print(f"  Deleted file: {file_path}")
+                deleted_count += 1
+            elif os.path.isdir(file_path):
+                shutil.rmtree(file_path)
+                print(f"  Deleted folder: {file_path}")
+                deleted_count += 1
+        except Exception as e:
+            print(f"  Failed to delete: {file_path}  ({e})")
+            failed.append(file_path)
+    print(f"Total deleted: {deleted_count}, Failed: {len(failed)}")
+
+def create_driver():
+    options = Options()
+    # options.add_argument("--headless")
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
+    driver = webdriver.Chrome(options=options)
+    return driver
+
+def login_and_scrape(selected_date=None):
+    driver = create_driver()
+    wait = WebDriverWait(driver, 10)
+    
+    driver.get("https://bo.x-spaceauto.com/Login")
+    
+    email_input = wait.until(EC.presence_of_element_located((By.ID, "textfield-email")))
+    email_input.clear()
+    email_input.send_keys(USERNAME)
+    
+    password_input = driver.find_element(By.ID, "textfield-password")
+    password_input.clear()
+    password_input.send_keys(PASSWORD)
+    
+    prefix_input = driver.find_element(By.ID, "textfield-prefix")
+    prefix_input.clear()
+    prefix_input.send_keys(PREFIX)
+    
+    sign_in_button = driver.find_element(By.XPATH, "//button[span[text()='Sign in']]")
+    sign_in_button.click()
+
+    try:
+        confirm_button = wait.until(
+            EC.element_to_be_clickable((By.XPATH, "//button[text()='ตกลง']"))
+        )
+        confirm_button.click()
+    except:
+        pass
+
+    driver.get("https://bo.x-spaceauto.com/ReportDeposit")
+    time.sleep(2)
+    
+    def clear_and_type_date(input_element, date_str):
+        input_element.click()
+        current_value = input_element.get_attribute("value")
+        for _ in current_value:
+            input_element.send_keys("\b")
+        
+        for ch in date_str:
+            input_element.send_keys(ch)
+            time.sleep(0.05)
+
+    if selected_date:
+        dt_obj = datetime.strptime(selected_date, "%Y-%m-%d")
+        start_date_str = dt_obj.strftime("%m/%d/%Y 00:00:00")
+        end_date_str = dt_obj.strftime("%m/%d/%Y 23:59:59")
+
+        inputs = wait.until(EC.presence_of_all_elements_located((By.ID, "date-picker-inline")))
+        start_date_input = inputs[0]
+        end_date_input = inputs[1]
+
+        clear_and_type_date(start_date_input, start_date_str)
+        clear_and_type_date(end_date_input, end_date_str)
+
+        time.sleep(1)
+
+        try:
+            search_button = driver.find_element(By.ID, "dashboad-search")
+        except:
+            search_button = driver.find_element(By.XPATH, "//button[contains(normalize-space(), 'ค้นหา')]")
+
+        search_button.click()
+
+        time.sleep(5)
+    
+    deposits = []
+    fetch_date = selected_date if selected_date else datetime.now().strftime("%Y-%m-%d")
+    
+    while True:
+        wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, 'table')))
+        rows = driver.find_elements(By.CSS_SELECTOR, 'table tbody tr')
+        for row in rows:
+            cols = row.find_elements(By.TAG_NAME, "td")
+            # print(f"DEBUG len(cols): {len(cols)}")
+            # for idx, c in enumerate(cols):
+            #     print(f"DEBUG [{idx}]:", repr(c.text.strip()))
+
+            txn_id = cols[0].text.strip() if len(cols) > 0 else ""
+            username = cols[1].text.strip() if len(cols) > 1 else ""
+            try:
+                bank_icon = cols[4].find_element(By.TAG_NAME, "img").get_attribute("src")
+            except:
+                bank_icon = ""
+            deposit_amount = cols[5].text.strip() if len(cols) > 5 else ""
+            bonus = cols[6].text.strip() if len(cols) > 6 else ""
+            status = cols[7].text.strip() if len(cols) > 7 else ""
+            remark = cols[8].text.strip() if len(cols) > 8 else ""
+
+            deposit_type = "Auto"  # default
+
+            # ค้นหาทุก <span> ที่เป็น badge ในทุก <td>
+            for td in cols:
+                try:
+                    spans = td.find_elements(By.TAG_NAME, "span")
+                    for span in spans:
+                        classes = span.get_attribute("class") or ""
+                        span_text = span.text.strip().lower()
+                        # print("DEBUG span_text:", repr(span_text), "| class:", classes)
+                        if "badge-danger" in classes:
+                            deposit_type = "Manual"
+                            break
+                    if deposit_type == "Manual":
+                        break
+                except Exception as e:
+                    # print("DEBUG span error:", e)
+                    continue
+
+            deposits.append({
+                "txn_id": txn_id,
+                "username": username,
+                "bank_icon": bank_icon,
+                "deposit_amount": deposit_amount,
+                "bonus": bonus,
+                "status": status,
+                "remark": remark,
+                "deposit_type": deposit_type,
+                "fetch_date": fetch_date,
+            })
+        # pagination
+        next_buttons = driver.find_elements(
+            By.CSS_SELECTOR,
+            ".MuiPagination-ul li button[aria-label='Go to next page']"
+        )
+        if next_buttons and next_buttons[0].is_enabled():
+            next_buttons[0].click()
+            time.sleep(2)
+        else:
+            break
+    
+    driver.quit()
+    clean_temp_folder()
+    return deposits
+
+def auto_fetch_previous_day():
+    app.config["AUTO_FETCHING"] = True
+    yesterday = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
+    print(f"[Auto Fetch] Fetching deposits for date: {yesterday}")
+    deposits = login_and_scrape(yesterday)
+    
+    for d in deposits:
+        filter_query = {"txn_id": d["txn_id"], "fetch_date": d["fetch_date"]}
+        collection.update_one(filter_query, {"$set": d}, upsert=True)
+    app.config["AUTO_FETCHING"] = False
+    print("[Auto Fetch] Completed.")
+
+scheduler = BackgroundScheduler()
+scheduler.add_job(auto_fetch_previous_day, 'cron', hour=AUTO_FETCH_HOUR, minute=AUTO_FETCH_MINUTE)
+scheduler.start()
+
+def clean_amount(text):
+    try:
+        return float(text.replace("เครดิต", "").replace(",", "").strip())
+    except:
+        return 0.0
+
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not session.get("logged_in"):
+            return redirect(url_for("login", next=request.url))
+        return f(*args, **kwargs)
+    return decorated_function
+
+@app.before_request
+def make_session_permanent():
+    print("Before request - session:", session)
+    if "logged_in" in session:
+        now = datetime.now()
+        last_activity = session.get("last_activity")
+
+        if last_activity:
+            try:
+                last_time = datetime.fromisoformat(last_activity)
+                elapsed = (now - last_time).total_seconds()
+                if elapsed > SESSION_TIMEOUT:
+                    session.clear()
+                    flash("หมดเวลาใช้งานกรุณาล็อกอินใหม่", "warning")
+                    return redirect(url_for("login"))
+            except Exception as e:
+                print("Error parsing last_activity:", e)
+
+        session["last_activity"] = now.isoformat()
+
+@app.route("/")
+@login_required
+def index():
+    now = datetime.now()
+    run_time_today = datetime.combine(now.date(), dt_time(AUTO_FETCH_HOUR, AUTO_FETCH_MINUTE))
+    if now >= run_time_today:
+        next_run = run_time_today + timedelta(days=1)
+    else:
+        next_run = run_time_today
+
+    is_auto_fetching = app.config.get("AUTO_FETCHING", False)
+
+    return render_template("index.html",
+                           is_auto_fetching=is_auto_fetching,
+                           auto_fetching=is_auto_fetching,
+                           next_run_timestamp=int(next_run.timestamp() * 1000))
+
+@app.route("/auto_fetch_status")
+@login_required
+def auto_fetch_status():
+    status = app.config.get("AUTO_FETCHING", False)
+    return {"auto_fetching": status}
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if request.method == "POST":
+        username = request.form.get("username")
+        password = request.form.get("password")
+
+        user = user_collection.find_one({"username": username})
+        if user:
+
+            if "password_hash" in user:
+                if check_password_hash(user["password_hash"], password):
+                    session["logged_in"] = True
+                    session["username"] = username
+                    flash("ล็อกอินสำเร็จ", "success")
+                    next_page = request.args.get("next")
+                    return redirect(next_page or url_for("index"))
+                else:
+                    flash("รหัสผ่านไม่ถูกต้อง", "danger")
+            else:
+                if user.get("password") == password:
+                    session["logged_in"] = True
+                    session["username"] = username
+                    flash("ล็อกอินสำเร็จ", "success")
+                    next_page = request.args.get("next")
+                    return redirect(next_page or url_for("index"))
+                else:
+                    flash("รหัสผ่านไม่ถูกต้อง", "danger")
+        else:
+            flash("ไม่พบชื่อผู้ใช้", "danger")
+
+    return render_template("login.html")
+
+@app.route("/logout")
+def logout():
+    session.clear()
+    flash("ออกจากระบบเรียบร้อยแล้ว", "success")
+    return redirect(url_for("login"))
+
+@app.route("/fetch", methods=["POST"])
+@login_required
+def fetch():
+    selected_date = request.form.get("selected_date")
+    deposits = login_and_scrape(selected_date)
+
+    for d in deposits:
+        filter_query = {"txn_id": d["txn_id"], "fetch_date": d["fetch_date"]}
+        collection.update_one(filter_query, {"$set": d}, upsert=True)
+
+    return redirect(url_for("report", date=selected_date))
+
+@app.route("/report", methods=["GET"])
+@login_required
+def report():
+    selected_date = request.args.get("date")
+    if selected_date:
+        deposits = list(collection.find({"fetch_date": selected_date}))
+    else:
+        latest_doc = collection.find_one(sort=[("fetch_date", -1)])
+        selected_date = latest_doc.get("fetch_date") if latest_doc else None
+        deposits = list(collection.find({"fetch_date": selected_date})) if selected_date else []
+    
+    totals         = defaultdict(float)
+    deductions     = defaultdict(float)
+    manual_total   = 0.0
+    total_deductions_amount = 0.0
+
+    for d in deposits:
+        amt     = clean_amount(d.get("deposit_amount", "0"))
+        icon    = d.get("bank_icon", "")
+        status  = d.get("status", "")
+        remark  = d.get("remark", "")
+        deposit_type  = d.get("deposit_type", "Auto")
+
+        if deposit_type == "Manual":
+            manual_total += amt
+            totals[icon] += amt 
+            continue
+
+        if "ตัดเครดิต" in status or "ตัดเครดิต" in remark:
+            deductions[icon] += amt
+            total_deductions_amount += amt
+        else:
+            totals[icon] += amt
+
+    net_totals = {}
+    for key in set(list(totals)+list(deductions)):
+        net_totals[key] = totals.get(key,0) - deductions.get(key,0)
+    total_net_amount = sum(net_totals.values())
+
+    total_sum = sum(totals.values())
+    net_after_deduction = total_sum - total_deductions_amount
+
+    return render_template(
+        "report.html",
+        deposits=deposits,
+        totals=totals,
+        deductions=deductions,
+        net_totals=net_totals,
+        total_net_amount=total_net_amount,
+        manual_total=manual_total, 
+        fetch_date=selected_date,
+        total_deductions_amount=total_deductions_amount,
+        net_after_deduction=net_after_deduction,
+        deposit_type_summary={
+            "Auto": sum(clean_amount(d.get("deposit_amount", "0")) for d in deposits if d.get("deposit_type") == "Auto"),
+            "Manual": manual_total
+        }
+    )
+
+@app.route("/history")
+@login_required
+def history():
+    dates = collection.distinct("fetch_date")
+    dates.sort(reverse=True)
+    return render_template("history.html", dates=dates)
+
+
+@app.route("/history/delete/<date>", methods=["POST"])
+@login_required
+def delete_history(date):
+    result = collection.delete_many({"fetch_date": date})
+    flash(f"ลบประวัติและข้อมูลวันที่ {date} สำเร็จ ({result.deleted_count} รายการ)", "success")
+    return redirect(url_for("history"))
+
+@app.route("/history/<date>")
+@login_required
+def history_date(date):
+    deposits = list(collection.find({"fetch_date": date}))
+
+    totals       = defaultdict(float)
+    deductions   = defaultdict(float)
+    manual_total = 0.0
+    total_deductions_amount = 0.0 
+
+    for d in deposits:
+        amt      = clean_amount(d.get("deposit_amount", "0"))
+        icon_url = d.get("bank_icon", "")
+        status   = d.get("status", "").lower()
+        remark   = d.get("remark", "").lower()
+        deposit_type = d.get("deposit_type", "Auto")
+
+        if deposit_type == "Manual":
+            manual_total += amt
+            totals[icon_url] += amt
+            continue
+
+        if "ตัดเครดิต" in status or "ตัดเครดิต" in remark:
+            deductions[icon_url] += amt
+            total_deductions_amount += amt
+        else:
+            totals[icon_url] += amt
+
+    net_totals = {
+        key: totals.get(key, 0) - deductions.get(key, 0)
+        for key in set(totals) | set(deductions)
+    }
+    total_net_amount = sum(net_totals.values())
+
+    total_sum = sum(totals.values())
+    net_after_deduction = total_sum - total_deductions_amount
+
+    return render_template(
+        "report.html",
+        deposits=deposits,
+        totals=totals,
+        deductions=deductions,
+        net_totals=net_totals,
+        total_net_amount=total_net_amount,
+        manual_total=manual_total,
+        total_deductions_amount=total_deductions_amount,
+        net_after_deduction=net_after_deduction,   # <<== ส่งเข้า template
+        fetch_date=date,
+        deposit_type_summary={
+            "Auto": sum(clean_amount(d.get("deposit_amount", "0")) for d in deposits if d.get("deposit_type") == "Auto"),
+            "Manual": manual_total
+        }
+    )
+
+if __name__ == "__main__":
+    cert_path = r"D:\certs\luv88.asia-crt.pem"
+    key_path = r"D:\certs\luv88.asia-key.pem"
+
+    try:
+        app.run(
+            host="0.0.0.0",
+            port=5000,
+            debug=False,
+            # ssl_context=(cert_path, key_path)
+        )
+    except (KeyboardInterrupt, SystemExit):
+        scheduler.shutdown()

@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>รายงานยอดฝาก</title>
+
+    <!-- โหลดฟอนต์ Prompt จาก Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;600;700&display=swap" rel="stylesheet">
+
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
+
+    <style>
+        body {
+            font-family: 'Prompt', sans-serif;
+            margin: 0; padding: 0;
+            background: #f7f9fc;
+            color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+            position: relative;
+            overflow-x: hidden;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 8px 20px rgb(0 0 0 / 0.1);
+            padding: 25px;
+            box-sizing: border-box;
+            position: relative;
+            z-index: 10; /* ให้อยู่เหนือหิมะ */
+        }
+        h2 {
+            display: block;
+            width: 100%;
+            padding: 10px 0;
+            font-weight: 700;
+            font-size: 1.4rem;
+            background-color: #2563eb;
+            color: white;
+            border-radius: 12px;
+            box-shadow: 0 6px 12px rgb(37 99 235 / 0.6);
+            user-select: none;
+            cursor: default;
+            text-align: center;
+            transition: background-color 0.3s ease, box-shadow 0.3s ease;
+            margin-bottom: 20px;
+        }
+        h2:hover {
+            background-color: #2563eb;
+            box-shadow: 0 6px 12px rgb(37 99 235 / 0.6);
+            cursor: default;
+        }
+        
+        p.date-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 600;
+            font-size: 1.1em;
+            margin-bottom: 20px;
+            justify-content: center;
+            color: #444;
+        }
+        p.date-info svg {
+            width: 24px;
+            height: 24px;
+            fill: #3b82f6;
+        }
+        ul.totals-list {
+            list-style: none;
+            padding: 0;
+            margin: 0 auto 30px;
+            max-width: 400px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            justify-content: center;
+        }
+        ul.totals-list li {
+            background: #e0f2fe;
+            border-radius: 8px;
+            padding: 10px 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 2px 6px rgb(0 0 0 / 0.05);
+            font-weight: 700;
+            font-size: 1em;
+            color: #0369a1;
+            min-width: 150px;
+            justify-content: center;
+        }
+        ul.totals-list li img {
+            height: 24px;
+            width: 24px;
+            object-fit: contain;
+        }
+        a.back-link {
+            display: inline-block;
+            color: #3b82f6;
+            font-weight: 600;
+            text-decoration: none;
+            margin-top: 10px;
+            text-align: center;
+            width: 100%;
+            transition: color 0.3s ease;
+            font-family: 'Prompt', sans-serif;
+        }
+        a.back-link:hover {
+            color: #2563eb;
+            text-decoration: underline;
+        }
+        .btnback {
+            display: block;
+            width: 100%;
+            padding: 12px 0;
+            font-weight: 700;
+            font-size: 1.1rem;
+            text-align: center;
+            text-decoration: none;
+            border-radius: 8px;
+            cursor: pointer;
+            user-select: none;
+            color: #fff;
+            background-color: #f97316;
+            border: none;
+            box-shadow: 0 6px 12px rgb(249 115 22 / 0.5);
+            transition: background-color 0.3s ease, box-shadow 0.3s ease;
+            font-family: 'Prompt', sans-serif;
+        }
+        .btnback:hover,
+        .btnback:focus {
+            background-color: #ea580c;
+            box-shadow: 0 8px 18px rgb(234 88 12 / 0.8);
+            outline: none;
+        }
+
+        .total-sum {
+            margin-bottom: 15px;
+            padding: 15px 20px;
+            font-weight: 700;
+            font-size: 1.4rem;
+            color: #0369a1;
+            background-color: #e0f2fe;
+            border-radius: 12px;
+            max-width: 400px;
+            margin-left: auto;
+            margin-right: auto;
+            user-select: none;
+            text-align: center;
+            transition: background-color 0.3s ease;
+            font-family: 'Prompt', sans-serif;
+        }
+
+        .total-sum:hover {
+            background-color: #bae6fd;
+        }
+
+        /* หิมะตก */
+        .snowflake {
+            position: fixed;
+            top: 0;
+            background-image: url('/static/img/snowflake.png'); /* เปลี่ยนเป็น path รูปเกล็ดหิมะของคุณ */
+            background-size: contain;
+            background-repeat: no-repeat;
+            opacity: 0.9;
+            pointer-events: none;
+            z-index: 5;
+            filter: drop-shadow(0 0 1px #aaa);
+            will-change: transform;
+            border-radius: 50%;
+        }
+
+        /* Responsive */
+        @media (max-width: 480px) {
+            ul.totals-list {
+                max-width: 100%;
+                gap: 10px;
+            }
+            ul.totals-list li {
+                min-width: 120px;
+                font-size: 0.9em;
+                padding: 8px 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>ยอดรวมรายการฝาก</h2>
+        {% if fetch_date %}
+        <p class="date-info">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V1h-2zm3 18H5V8h14v11z"></path>
+            </svg>
+            ข้อมูลวันที่: {{ fetch_date }}
+        </p>
+        {% else %}
+        <p style="text-align:center; color:#888;">ยังไม่มีข้อมูล</p>
+        {% endif %}
+
+        <ul class="totals-list">
+            {% for bank_url, total in totals.items() %}
+            <li>
+                <img src="{{ bank_url }}" alt="Bank Icon" />
+                {{ total }} บาท
+            </li>
+            {% endfor %}
+        </ul>
+
+        {% if deposit_type_summary %}
+            <div style="display:flex; gap:12px; justify-content:center; margin-bottom:16px;">
+                <div class="total-sum" style="background-color:#fde68a; color:#92400e; margin-bottom:0;">
+                    เติมมือ: {{ deposit_type_summary.Manual }} บาท
+                </div>
+                <div class="total-sum" style="background-color:#bae6fd; color:#0369a1; margin-bottom:0;">
+                    Auto: {{ deposit_type_summary.Auto }} บาท
+                </div>
+            </div>
+        {% endif %}
+
+        <div class="total-sum" style="background-color:#fecaca; color:#b91c1c; margin-bottom:10px;">
+            ยอดตัดเครดิตรวม: {{ total_deductions_amount }} บาท
+        </div>
+                
+        {% if totals %}
+        <div class="total-sum">
+            <b>รวมยอดสุทธิ: {{ net_after_deduction }} บาท</b>
+        </div>
+        {% endif %}
+
+        <a href="{{ url_for('index') }}" class="btnback">กลับหน้าแรก</a>
+    </div>
+
+    <script>
+        const numFlakes = 40;
+        const flakes = [];
+        const snowflakeUrl = '/static/img/snowflake.png'; // เปลี่ยน path รูปเกล็ดหิมะตามที่เก็บจริง
+
+        for(let i = 0; i < numFlakes; i++) {
+            const flake = document.createElement('div');
+            flake.classList.add('snowflake');
+            const size = Math.random() * 15 + 10;
+            flake.style.width = size + 'px';
+            flake.style.height = size + 'px';
+            flake.style.backgroundImage = `url(${snowflakeUrl})`;
+
+            flake.x = Math.random() * window.innerWidth;
+            flake.y = Math.random() * window.innerHeight;
+            flake.speedY = Math.random() * 1 + 0.7;
+            flake.speedX = (Math.random() - 0.5) * 0.6;
+
+            flake.style.left = flake.x + 'px';
+            flake.style.top = flake.y + 'px';
+
+            document.body.appendChild(flake);
+            flakes.push(flake);
+        }
+
+        function animate() {
+            flakes.forEach(flake => {
+                flake.y += flake.speedY;
+                flake.x += flake.speedX;
+
+                if(flake.y > window.innerHeight) {
+                    flake.y = -20;
+                    flake.x = Math.random() * window.innerWidth;
+                }
+                if(flake.x > window.innerWidth) {
+                    flake.x = 0;
+                }
+                if(flake.x < 0) {
+                    flake.x = window.innerWidth;
+                }
+
+                flake.style.transform = `translate(${flake.x}px, ${flake.y}px)`;
+            });
+            requestAnimationFrame(animate);
+        }
+
+        animate();
+
+        window.addEventListener('resize', () => {
+            flakes.forEach(flake => {
+                if(flake.x > window.innerWidth) flake.x = window.innerWidth * Math.random();
+                if(flake.y > window.innerHeight) flake.y = window.innerHeight * Math.random();
+            });
+        });
+    </script>
+</body>
+</html>

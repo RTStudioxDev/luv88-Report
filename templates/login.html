@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Login</title>
+
+<!-- โหลดฟ้อนต์ Prompt จาก Google Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;600;700&display=swap" rel="stylesheet">
+
+<link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
+
+<style>
+    body {
+        font-family: 'Prompt', sans-serif;
+        margin: 0; padding: 0;
+        background: #f7f9fc;
+        color: #333;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        padding: 20px;
+        position: relative;
+        overflow-x: hidden;
+    }
+    .container {
+        background: white;
+        max-width: 400px;
+        width: 100%;
+        border-radius: 12px;
+        box-shadow: 0 12px 24px rgb(0 0 0 / 0.1);
+        padding: 35px 40px;
+        box-sizing: border-box;
+        text-align: center;
+        position: relative;
+        z-index: 10; /* ให้อยู่เหนือหิมะ */
+    }
+    /* h2 {
+        width: 100%;
+        padding: 10px 0;
+        font-weight: 700;
+        font-size: 1.8rem;
+        background-color: #facc15; 
+        color: #78350f;
+        border-radius: 12px;
+        box-shadow: 0 6px 12px rgb(250 204 21 / 0.6);
+        user-select: none;
+        cursor: default;
+        text-align: center;
+        margin-bottom: 30px;
+        transition: background-color 0.3s ease, box-shadow 0.3s ease;
+    }
+    h2:hover {
+        background-color: #eab308;
+        box-shadow: 0 6px 12px rgb(234 179 8 / 0.6);
+        cursor: default;
+    } */
+    h2 {
+        padding: 0;
+        background: none;
+        box-shadow: none;
+    }
+    h2 img {
+        max-width: 140px;
+        width: 100%;
+        height: auto;
+        display: block;
+        margin: 0 auto;
+    }
+    form {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+    }
+    label {
+        font-weight: 600;
+        font-size: 1.1rem;
+        text-align: left;
+        display: block;
+    }
+    input[type="text"],
+    input[type="password"] {
+        width: 100%;
+        padding: 12px 15px;
+        font-size: 1.1rem;
+        border: 1.5px solid #ccc;
+        border-radius: 8px;
+        transition: border-color 0.3s ease;
+        font-family: 'Prompt', sans-serif;
+        box-sizing: border-box;
+    }
+    input[type="text"]:focus,
+    input[type="password"]:focus {
+        border-color: #3b82f6;
+        outline: none;
+        box-shadow: 0 0 6px #3b82f6aa;
+    }
+    button[type="submit"] {
+        background-color: #3b82f6;
+        color: white;
+        border: none;
+        padding: 14px 0;
+        border-radius: 8px;
+        font-weight: 700;
+        font-size: 1.2rem;
+        cursor: pointer;
+        transition: background-color 0.3s ease, box-shadow 0.3s ease;
+        box-shadow: 0 6px 12px rgb(59 130 246 / 0.4);
+        font-family: 'Prompt', sans-serif;
+    }
+    button[type="submit"]:hover {
+        background-color: #2563eb;
+        box-shadow: 0 8px 16px rgb(37 99 235 / 0.7);
+    }
+    ul.messages {
+        list-style: none;
+        padding: 0;
+        margin: 0 0 15px 0;
+        text-align: left;
+    }
+    ul.messages li {
+        padding: 12px 18px;
+        margin-bottom: 12px;
+        border-radius: 12px;
+        font-weight: 700;
+        font-size: 1.1rem;
+        box-shadow: 0 4px 12px rgb(0 0 0 / 0.1);
+        opacity: 0;
+        animation: fadeInUp 0.6s forwards;
+        max-width: 100%;
+        word-break: break-word;
+    }
+    ul.messages li.success {
+        background-color: #22c55e; /* สีเขียวสด */
+        color: #064e3b;
+        border: 1px solid #16a34a; /* เข้มกว่าเล็กน้อย */
+        box-shadow: 0 6px 15px rgba(34, 197, 94, 0.4);
+        font-size: 1.15rem;
+        padding: 18px 25px;
+        border-radius: 16px;
+        font-weight: 700;
+        text-align: center;
+        max-width: 100%;
+        word-wrap: break-word;
+        user-select: none;
+        animation: fadeInUp 0.6s ease forwards;
+    }
+    ul.messages li.danger {
+        background-color: #ef4444; /* สีแดงสด */
+        color: #7f1d1d;
+        border: 1px solid #b91c1c; /* เข้มกว่าเล็กน้อย */
+        box-shadow: 0 6px 15px rgba(239, 68, 68, 0.4);
+        font-size: 1.15rem;
+        padding: 18px 25px;
+        border-radius: 16px;
+        font-weight: 700;
+        text-align: center;
+        max-width: 100%;
+        word-wrap: break-word;
+        user-select: none;
+        animation: fadeInUp 0.6s ease forwards;
+    }
+    ul.messages li.info {
+        background-color: #3b82f6; /* สีน้ำเงินสด */
+        color: #1e40af;
+        border: 1px solid #1e40af; /* เข้มกว่า */
+        box-shadow: 0 6px 15px rgba(59, 130, 246, 0.4);
+        font-size: 1.15rem;
+        padding: 18px 25px;
+        border-radius: 16px;
+        font-weight: 700;
+        text-align: center;
+        max-width: 100%;
+        word-wrap: break-word;
+        user-select: none;
+        animation: fadeInUp 0.6s ease forwards;
+    }
+    ul.messages li.warning {
+        background-color: #facc15; /* สีเหลืองสด */
+        color: #854d0e; /* สีน้ำตาลเข้มสำหรับข้อความ */
+        border: 1px solid #ca8a04; /* ขอบสีเหลืองเข้ม */
+        box-shadow: 0 6px 15px rgba(250, 204, 21, 0.4);
+        font-size: 1.15rem;
+        padding: 18px 25px;
+        border-radius: 16px;
+        font-weight: 700;
+        text-align: center;
+        max-width: 100%;
+        word-wrap: break-word;
+        user-select: none;
+        animation: fadeInUp 0.6s ease forwards;
+    }
+
+    /* Animation for fade in and slide up */
+    @keyframes fadeInUp {
+        from {
+        opacity: 0;
+        transform: translateY(15px);
+        }
+        to {
+        opacity: 1;
+        transform: translateY(0);
+        }
+    }
+
+    /* หิมะตก */
+    .snowflake {
+        position: fixed;
+        top: -10px;
+        background-image: url('/static/img/snowflake.png'); /* ปรับ path รูปหิมะ */
+        background-size: contain;
+        background-repeat: no-repeat;
+        opacity: 0.9;
+        pointer-events: none;
+        z-index: 5;
+        filter: drop-shadow(0 0 1px #aaa);
+        will-change: transform;
+    }
+
+    /* Responsive */
+    @media (max-width: 480px) {
+        .container {
+        padding: 30px 20px;
+        max-width: 100%;
+        }
+    }
+</style>
+
+</head>
+<body>
+  <div class="container">
+    <h2>
+        <img src="/static/img/luv88-2.png" alt="LUV88 Logo" />
+    </h2>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <ul class="messages" id="flash-messages">
+            {% for category, message in messages %}
+                <li class="{{ category }}">{{ message }}</li>
+            {% endfor %}
+            </ul>
+
+            <script>
+            // เมื่อโหลดเสร็จ ให้ตั้งเวลา 3 วิ แล้วซ่อนข้อความ
+            setTimeout(() => {
+                const flashMessages = document.getElementById("flash-messages");
+                if(flashMessages){
+                flashMessages.style.transition = "opacity 0.5s ease";
+                flashMessages.style.opacity = 0;
+                // ซ่อน element หลังจาก animation จบ (0.5 วิ)
+                setTimeout(() => {
+                    flashMessages.style.display = "none";
+                }, 500);
+                }
+            }, 3000);
+            </script>
+        {% endif %}
+    {% endwith %}
+
+    <form method="post">
+      <label for="username">ชื่อผู้ใช้</label>
+      <input type="text" id="username" name="username" required autocomplete="username" />
+      
+      <label for="password">รหัสผ่าน</label>
+      <input type="password" id="password" name="password" required autocomplete="current-password" />
+      
+      <button type="submit">เข้าสู่ระบบ</button>
+    </form>
+  </div>
+
+  <script>
+    const numFlakes = 40;
+    const flakes = [];
+    const snowflakeUrl = '/static/img/snowflake.png'; // เปลี่ยนเป็น path รูปเกล็ดหิมะของคุณ
+    
+    for(let i=0; i<numFlakes; i++) {
+      const flake = document.createElement('div');
+      flake.classList.add('snowflake');
+      const size = Math.random() * 15 + 10;
+      flake.style.width = size + 'px';
+      flake.style.height = size + 'px';
+      flake.style.backgroundImage = `url(${snowflakeUrl})`;
+
+      flake.x = Math.random() * window.innerWidth;
+      flake.y = Math.random() * window.innerHeight;
+      flake.speedY = Math.random() * 1 + 0.7;
+      flake.speedX = (Math.random() - 0.5) * 0.6;
+
+      flake.style.left = flake.x + 'px';
+      flake.style.top = flake.y + 'px';
+
+      document.body.appendChild(flake);
+      flakes.push(flake);
+    }
+
+    function animate() {
+      flakes.forEach(flake => {
+        flake.y += flake.speedY;
+        flake.x += flake.speedX;
+
+        if(flake.y > window.innerHeight) {
+          flake.y = -20;
+          flake.x = Math.random() * window.innerWidth;
+        }
+        if(flake.x > window.innerWidth) {
+          flake.x = 0;
+        }
+        if(flake.x < 0) {
+          flake.x = window.innerWidth;
+        }
+
+        flake.style.transform = `translate(${flake.x}px, ${flake.y}px)`;
+      });
+      requestAnimationFrame(animate);
+    }
+
+    animate();
+
+    window.addEventListener('resize', () => {
+      flakes.forEach(flake => {
+        if(flake.x > window.innerWidth) flake.x = window.innerWidth * Math.random();
+        if(flake.y > window.innerHeight) flake.y = window.innerHeight * Math.random();
+      });
+    });
+  </script>
+</body>
+</html>

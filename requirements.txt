@@ -1,0 +1,7 @@
+Flask
+pymongo
+requests
+apscheduler
+python-dotenv
+Werkzeug
+gunicorn

@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ดึงยอดฝาก</title>
+
+  <!-- โหลดฟอนต์ Prompt จาก Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;600;700&display=swap" rel="stylesheet">
+
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
+
+  <style>
+    body {
+      font-family: 'Prompt', sans-serif;
+      margin: 0; padding: 0;
+      background: #f7f9fc;
+      color: #333;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 20px;
+      position: relative;
+      overflow-x: hidden;
+    }
+    .container {
+      background: white;
+      max-width: 550px;
+      width: 100%;
+      border-radius: 12px;
+      box-shadow: 0 12px 24px rgb(0 0 0 / 0.1);
+      padding: 35px 40px;
+      box-sizing: border-box;
+      text-align: center;
+      position: relative;
+      z-index: 10; /* ให้อยู่เหนือหิมะ */
+    }
+    h2 {
+      width: 100%;
+      padding: 10px 0;
+      font-weight: 700;
+      font-size: 1.4rem;
+      background-color: #2563eb;
+      color: white;
+      border-radius: 12px;
+      box-shadow: 0 6px 12px rgb(37 99 235 / 0.6);
+      user-select: none;
+      cursor: default;
+      text-align: center;
+      margin-bottom: 20px;
+      transition: background-color 0.3s ease, box-shadow 0.3s ease;
+    }
+    h2:hover {
+      background-color: #2563eb;
+      box-shadow: 0 6px 12px rgb(37 99 235 / 0.6);
+      cursor: default;
+    }
+
+    .snowflake {
+      position: fixed;
+      top: -10px;
+      background-image: url('/static/img/snowflake.png'); /* เปลี่ยนเป็น path รูปของคุณ */
+      background-size: contain;
+      background-repeat: no-repeat;
+      opacity: 0.9;
+      pointer-events: none;
+      z-index: 5;
+      filter: drop-shadow(0 0 1px #aaa);
+      will-change: transform;
+    }
+
+    form {
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+    label {
+      font-weight: 600;
+      text-align: left;
+      font-size: 1rem;
+      margin-bottom: 6px;
+    }
+    input[type="date"] {
+      padding: 12px 14px;
+      font-size: 1.1rem;
+      border: 1.5px solid #ccc;
+      border-radius: 8px;
+      transition: border-color 0.3s ease;
+      font-family: 'Prompt', sans-serif;
+    }
+    input[type="date"]:focus {
+      border-color: #3b82f6;
+      outline: none;
+      box-shadow: 0 0 6px #3b82f6aa;
+    }
+    button[type="submit"] {
+      background-color: #3b82f6;
+      color: white;
+      border: none;
+      padding: 14px 0;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 1.2rem;
+      cursor: pointer;
+      transition: background-color 0.3s ease, box-shadow 0.3s ease;
+      box-shadow: 0 6px 12px rgb(59 130 246 / 0.4);
+      font-family: 'Prompt', sans-serif;
+    }
+    button[type="submit"]:hover {
+      background-color: #2563eb;
+      box-shadow: 0 8px 16px rgb(37 99 235 / 0.7);
+    }
+    .button-group {
+      display: flex;
+      justify-content: space-between;
+      gap: 18px;
+      margin-top: 40px;
+    }
+    .btn {
+      flex: 1;
+      padding: 14px 0;
+      font-weight: 700;
+      font-size: 1.1rem;
+      text-align: center;
+      text-decoration: none;
+      border-radius: 8px;
+      cursor: pointer;
+      user-select: none;
+      color: white;
+      background-color: #2563eb;
+      border: none;
+      box-shadow: 0 6px 12px rgb(37 99 235 / 0.5);
+      transition: background-color 0.3s ease, box-shadow 0.3s ease;
+      font-family: 'Prompt', sans-serif;
+    }
+    .btn:hover,
+    .btn:focus {
+      background-color: #1e40af;
+      box-shadow: 0 8px 18px rgb(30 64 175 / 0.8);
+      outline: none;
+    }
+    .btnhistory {
+      flex: 1;
+      padding: 14px 0;
+      font-weight: 700;
+      font-size: 1.1rem;
+      text-align: center;
+      text-decoration: none;
+      border-radius: 8px;
+      cursor: pointer;
+      user-select: none;
+      color: #333333; /* ตัวหนังสือสีเข้ม อ่านง่ายกับพื้นเหลือง */
+      background-color: #fbbf24; /* สีเหลืองสด (amber-400) */
+      border: none;
+      box-shadow: 0 6px 12px rgb(251 191 36 / 0.5);
+      transition: background-color 0.3s ease, box-shadow 0.3s ease;
+      font-family: 'Prompt', sans-serif;
+    }
+    .btnhistory:hover,
+    .btnhistory:focus {
+      background-color: #f59e0b; /* สีเหลืองเข้มขึ้น (amber-500) */
+      box-shadow: 0 8px 18px rgb(245 158 11 / 0.8);
+      outline: none;
+    }
+    /* Popup overlay พื้นหลังโปร่งใส */
+    #loadingOverlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100vw; height: 100vh;
+      background: rgba(0, 0, 0, 0.4);
+      z-index: 9999;
+      justify-content: center;
+      align-items: center;
+    }
+    /* กล่อง popup */
+    #loadingPopup {
+      background: white;
+      padding: 30px 40px;
+      border-radius: 12px;
+      box-shadow: 0 0 15px rgba(0,0,0,0.3);
+      font-size: 1.3rem;
+      font-weight: 700;
+      font-family: 'Prompt', sans-serif;
+      color: #2563eb;
+      user-select: none;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    /* ใส่ animation หมุนให้ไอคอน loading (ถ้าอยากใส่) */
+    #loadingSpinner {
+      width: 24px;
+      height: 24px;
+      border: 3px solid #2563eb;
+      border-top-color: transparent;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    #autoFetchStatus {
+      display: inline-flex;
+      padding: 8px 20px;
+      margin-bottom: 5px;
+      font-weight: 600;
+      color: #22c55e; /* เปลี่ยนเป็นสีเขียวสด */
+      font-size: 0.9rem;
+      border: 2px solid #22c55e; /* เปลี่ยนขอบเป็นสีเขียวสด */
+      border-radius: 10px;
+      background: #d1fae5; /* สีพื้นหลังเขียวอ่อน */
+      box-shadow: 0 4px 8px rgba(34, 197, 94, 0.3); /* เงาสีเขียว */
+      user-select: none;
+      pointer-events: none;
+      text-align: center;
+      font-family: 'Prompt', sans-serif;
+
+      align-items: center;
+      justify-content: center;
+      line-height: 1.0;
+    }
+
+    #autoFetchMessage {
+      margin: 0; /* ลบ margin เพื่อไม่ให้มีช่องว่างเพิ่ม */
+      padding: 0;
+      color: #e02525;
+    }
+
+    #autoCountdownContainer {
+      display: inline-block;
+      font-weight: 600;
+      color: #15803d; /* สีเขียวเข้มสำหรับข้อความนับถอยหลัง */
+      margin-top: 4px; /* เว้นระยะห่างเล็กน้อยจากข้อความบน */
+    }
+    /* Responsive */
+    @media (max-width: 480px) {
+      .container {
+        padding: 30px 20px;
+      }
+      .button-group {
+        flex-direction: column;
+      }
+      .btn,
+      .btnhistory {
+        width: 100%;
+        flex: none;
+      }
+      button[type="submit"] {
+        font-size: 1.1rem;
+        padding: 14px;
+      }
+      input[type="date"] {
+        font-size: 1rem;
+        padding: 10px 12px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div id="autoFetchStatus" style="display: {{ 'flex' if is_auto_fetching else 'none' }}; margin-bottom:20px; font-weight:700; color:#2563eb; font-size:1.1rem; flex-direction: column; align-items: center; justify-content: center;">
+      <span id="autoFetchMessage">ระบบกำลังดึงข้อมูลแบบอัตโนมัติ...</span>
+      <span id="autoCountdownContainer" style="display:none; margin-top: 4px;">
+        ดึงข้อมูลแบบอัตโนมัติในอีก <span id="autoCountdown"></span>
+      </span>
+    </div>
+    <h2>ดึงรายงานยอดฝาก</h2>
+    <form method="post" action="{{ url_for('fetch') }}">
+      <label for="selected_date">เลือกวันที่:</label>
+      <input type="date" id="selected_date" name="selected_date" required />
+      <button type="submit">ดึงยอด</button>
+    </form>
+    <div class="button-group">
+      <a href="{{ url_for('report') }}" class="btn">ดูรายงานยอดฝากล่าสุด</a>
+      <a href="{{ url_for('history') }}" class="btnhistory">ดูประวัติรายงาน</a>
+    </div>
+  </div>
+
+  <!-- Popup loading -->
+  <div id="loadingOverlay">
+    <div id="loadingPopup">
+      <div id="loadingSpinner"></div>
+      กำลังดึงข้อมูล...
+    </div>
+  </div>
+
+  <script>
+    const numFlakes = 40;
+    const flakes = [];
+    const snowflakeUrl = '/static/img/snowflake.png'; // เปลี่ยน path เป็นที่เก็บรูปเกล็ดหิมะของคุณ
+
+    
+    for(let i=0; i<numFlakes; i++) {
+    const flake = document.createElement('div');
+    flake.classList.add('snowflake');
+    const size = Math.random() * 15 + 10;
+    flake.style.width = size + 'px';
+    flake.style.height = size + 'px';
+    flake.style.backgroundImage = `url(${snowflakeUrl})`;
+
+    // กระจายตำแหน่ง X ให้เต็มหน้าจอ (0 - window.innerWidth)
+    flake.x = Math.random() * window.innerWidth;
+    flake.y = Math.random() * window.innerHeight;
+    flake.speedY = Math.random() * 1 + 0.7;
+    flake.speedX = (Math.random() - 0.5) * 0.6;
+
+    flake.style.left = flake.x + 'px';
+    flake.style.top = flake.y + 'px';
+
+    document.body.appendChild(flake);
+    flakes.push(flake);
+    }
+
+    function animate() {
+    flakes.forEach(flake => {
+        flake.y += flake.speedY;
+        flake.x += flake.speedX;
+
+        if(flake.y > window.innerHeight) {
+        flake.y = -20;
+        flake.x = Math.random() * window.innerWidth; // กระจายใหม่ในแนวนอนเต็มจอ
+        }
+        if(flake.x > window.innerWidth) {
+        flake.x = 0;
+        }
+        if(flake.x < 0) {
+        flake.x = window.innerWidth;
+        }
+
+        flake.style.transform = `translate(${flake.x}px, ${flake.y}px)`;
+    });
+    requestAnimationFrame(animate);
+    }
+
+    animate();
+
+    window.addEventListener('resize', () => {
+    flakes.forEach(flake => {
+        if(flake.x > window.innerWidth) flake.x = window.innerWidth * Math.random();
+        if(flake.y > window.innerHeight) flake.y = window.innerHeight * Math.random();
+    });
+    });
+
+    // เพิ่มโค้ดแสดง popup ตอนกด submit
+    const form = document.querySelector("form");
+    const loadingOverlay = document.getElementById("loadingOverlay");
+
+    form.addEventListener("submit", () => {
+      loadingOverlay.style.display = "flex";
+    });
+
+    // กำหนดเวลาที่ระบบจะทำงานอัตโนมัติ (เช่น ทุกวันเวลา 00:05)
+    const autoFetching = {{ auto_fetching|tojson }};
+    const nextRunTime = new Date({{ next_run_timestamp }});
+
+    const autoFetchStatus = document.getElementById("autoFetchStatus");
+    const autoFetchMessage = document.getElementById("autoFetchMessage");
+    const autoCountdownContainer = document.getElementById("autoCountdownContainer");
+    const autoCountdown = document.getElementById("autoCountdown");
+
+    function updateCountdown() {
+      const now = new Date();
+      let diff = nextRunTime - now;
+
+      if (diff <= 0) {
+        // เวลาถึงแล้ว กำลังดึงข้อมูล
+        autoFetchMessage.textContent = "ระบบกำลังดึงข้อมูลแบบอัตโนมัติ...";
+        autoCountdownContainer.style.display = "none";
+        return;
+      }
+
+      // แสดงเวลานับถอยหลัง
+      autoFetchMessage.textContent = "";
+      autoCountdownContainer.style.display = "inline";
+
+      const hours = Math.floor(diff / 1000 / 60 / 60);
+      diff -= hours * 1000 * 60 * 60;
+      const minutes = Math.floor(diff / 1000 / 60);
+      diff -= minutes * 1000 * 60;
+      const seconds = Math.floor(diff / 1000);
+
+      autoCountdown.textContent =
+        (hours > 0 ? hours + " ชม. " : "") +
+        minutes + " นาที " +
+        seconds + " วินาที";
+    }
+
+    if (autoFetching) {
+      // กำลังดึงข้อมูล แสดงแต่ข้อความ ไม่แสดงนับถอยหลัง
+      autoFetchStatus.style.display = "block";
+      autoFetchMessage.textContent = "ระบบกำลังดึงข้อมูลแบบอัตโนมัติ...";
+      autoCountdownContainer.style.display = "none";
+    } else {
+      // แสดงนับถอยหลัง
+      autoFetchStatus.style.display = "block";
+      updateCountdown();
+      setInterval(updateCountdown, 1000);
+    }
+
+    // ฟังก์ชันเช็คสถานะ auto fetch จาก server
+    async function checkAutoFetchStatus() {
+      try {
+        const response = await fetch("/auto_fetch_status");
+        if (!response.ok) return false;
+        const data = await response.json();
+        return data.auto_fetching;
+      } catch (err) {
+        console.error("Error checking auto fetch status:", err);
+        return false;
+      }
+    }
+
+    let wasFetching = {{ 'true' if is_auto_fetching else 'false' }};
+    
+    // polling ทุก 5 วินาที เช็คสถานะ
+    setInterval(async () => {
+      const currentlyFetching = await checkAutoFetchStatus();
+
+      if (wasFetching && !currentlyFetching) {
+        // ระบบเพิ่งเสร็จดึงข้อมูล รีเฟรชหน้าเลย
+        location.reload();
+      }
+
+      wasFetching = currentlyFetching;
+    }, 10000);
+  </script>
+</body>
+</html>

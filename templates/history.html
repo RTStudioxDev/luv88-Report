@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ประวัติการดึงข้อมูล</title>
+    
+    <!-- โหลดฟ้อนต์ Prompt จาก Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;600;700&display=swap" rel="stylesheet">
+
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
+
+    <style>
+        body {
+            font-family: 'Prompt', sans-serif;
+            margin: 0; padding: 0;
+            background: #f7f9fc;
+            color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+            position: relative;
+            overflow-x: hidden;
+        }
+        .container {
+            width: 40%;
+            max-width: 900px;
+            min-width: 320px; /* ป้องกันเล็กเกินไปบนมือถือ */
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 8px 20px rgb(0 0 0 / 0.1);
+            padding: 25px;
+            box-sizing: border-box;
+            position: relative;
+            z-index: 10; /* ให้อยู่เหนือหิมะ */
+        }
+        h1 {
+            display: block;
+            width: 100%;
+            padding: 10px 0;
+            font-weight: 700;
+            font-size: 1.4rem;
+            background-color: #2563eb;
+            color: white;
+            border-radius: 12px;
+            box-shadow: 0 6px 12px rgb(37 99 235 / 0.6);
+            user-select: none;
+            cursor: default;
+            text-align: center;
+            transition: background-color 0.3s ease, box-shadow 0.3s ease;
+            margin-bottom: 20px;
+        }
+        h1:hover {
+            background-color: #2563eb;
+            box-shadow: 0 6px 12px rgb(37 99 235 / 0.6);
+            cursor: default;
+        }
+        ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        li {
+            background: #e0f2fe;
+            margin-bottom: 10px;
+            padding: 12px 15px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 1em;
+            box-shadow: 0 2px 6px rgb(0 0 0 / 0.05);
+            transition: background-color 0.3s ease;
+        }
+        li a {
+            color: #0369a1;
+            text-decoration: none;
+            display: block;
+            font-family: 'Prompt', sans-serif;
+        }
+        li:hover {
+            background: #bae6fd;
+        }
+        a.back-link {
+            display: block;
+            color: #3b82f6;
+            font-weight: 600;
+            text-decoration: none;
+            margin-top: 20px;
+            text-align: center;
+            transition: color 0.3s ease;
+            font-family: 'Prompt', sans-serif;
+        }
+        a.back-link:hover {
+            color: #2563eb;
+            text-decoration: underline;
+        }
+        .btnback {
+            display: block;
+            width: 100%;
+            padding: 12px 0;
+            font-weight: 700;
+            font-size: 1.1rem;
+            text-align: center;
+            text-decoration: none;
+            border-radius: 8px;
+            cursor: pointer;
+            user-select: none;
+            color: #fff;
+            background-color: #f97316;
+            border: none;
+            box-shadow: 0 6px 12px rgb(249 115 22 / 0.5);
+            transition: background-color 0.3s ease, box-shadow 0.3s ease;
+            font-family: 'Prompt', sans-serif;
+        }
+        .btnback:hover,
+        .btnback:focus {
+            background-color: #ea580c;
+            box-shadow: 0 8px 18px rgb(234 88 12 / 0.8);
+            outline: none;
+        }
+
+        /* หิมะตก */
+        .snowflake {
+            position: fixed;
+            top: 0;
+            background-image: url('/static/img/snowflake.png'); /* เปลี่ยนเป็น path รูปเกล็ดหิมะของคุณ */
+            background-size: contain;
+            background-repeat: no-repeat;
+            opacity: 0.9;
+            pointer-events: none;
+            z-index: 5;
+            filter: drop-shadow(0 0 1px #aaa);
+            will-change: transform;
+            border-radius: 50%;
+        }
+
+        /* Responsive */
+        @media (max-width: 480px) {
+            .container {
+                padding: 20px 15px;
+                margin: 10px;
+                width: auto;
+                min-width: 280px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>ประวัติการดึงข้อมูล</h1>
+        <ul>
+            {% for date in dates %}
+            <li style="display: flex; align-items: center; gap: 12px;">
+                <a href="{{ url_for('history_date', date=date) }}">รายงานวันที่ {{ date }}</a>
+                
+                <form action="{{ url_for('delete_history', date=date) }}" method="post" style="margin:0;">
+                    <button type="submit" 
+                            onclick="return confirm('ต้องการลบข้อมูลวันที่ {{ date }} ใช่หรือไม่?');" 
+                            style="background:#ef4444; color:#fff; border:none; border-radius:4px; padding:4px 8px; cursor:pointer;">
+                        ลบ
+                    </button>
+                </form>
+            </li>
+            {% else %}
+            <li>ไม่มีข้อมูล</li>
+            {% endfor %}
+        </ul>
+        <a href="{{ url_for('index') }}" class="btnback">กลับหน้าแรก</a>
+    </div>
+
+    <script>
+        const numFlakes = 40;
+        const flakes = [];
+        const snowflakeUrl = '/static/img/snowflake.png'; // เปลี่ยน path รูปเกล็ดหิมะตามที่เก็บจริง
+
+        for(let i = 0; i < numFlakes; i++) {
+            const flake = document.createElement('div');
+            flake.classList.add('snowflake');
+            const size = Math.random() * 15 + 10;
+            flake.style.width = size + 'px';
+            flake.style.height = size + 'px';
+            flake.style.backgroundImage = `url(${snowflakeUrl})`;
+
+            flake.x = Math.random() * window.innerWidth;
+            flake.y = Math.random() * window.innerHeight;
+            flake.speedY = Math.random() * 1 + 0.7;
+            flake.speedX = (Math.random() - 0.5) * 0.6;
+
+            flake.style.left = flake.x + 'px';
+            flake.style.top = flake.y + 'px';
+
+            document.body.appendChild(flake);
+            flakes.push(flake);
+        }
+
+        function animate() {
+            flakes.forEach(flake => {
+                flake.y += flake.speedY;
+                flake.x += flake.speedX;
+
+                if(flake.y > window.innerHeight) {
+                    flake.y = -20;
+                    flake.x = Math.random() * window.innerWidth;
+                }
+                if(flake.x > window.innerWidth) {
+                    flake.x = 0;
+                }
+                if(flake.x < 0) {
+                    flake.x = window.innerWidth;
+                }
+
+                flake.style.transform = `translate(${flake.x}px, ${flake.y}px)`;
+            });
+            requestAnimationFrame(animate);
+        }
+
+        animate();
+
+        window.addEventListener('resize', () => {
+            flakes.forEach(flake => {
+                if(flake.x > window.innerWidth) flake.x = window.innerWidth * Math.random();
+                if(flake.y > window.innerHeight) flake.y = window.innerHeight * Math.random();
+            });
+        });
+    </script>
+</body>
+</html>
