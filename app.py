@@ -9,9 +9,9 @@ from werkzeug.security import check_password_hash
 import os
 
 app = Flask(__name__)
-app.secret_key = "rtstudioxcode789y7u4f5sd6dsai2"
-MONGO_URI = "mongodb://admin:060843Za@147.50.240.76:27017/"
-DB_NAME = "luv88db"
+app.secret_key = os.environ.get("SECRET_KEY")
+MONGO_URI = os.environ.get("MONGO_URI")
+DB_NAME = os.environ.get("luv88db")
 client = MongoClient(MONGO_URI)
 db = client[DB_NAME]
 collection = db["deposits"]
@@ -21,7 +21,6 @@ AUTO_FETCH_MINUTE = 5
 app.config["AUTO_FETCHING"] = False
 SESSION_TIMEOUT = 300
 NODE_API_BASE = os.environ.get("NODE_API_BASE")
-# NODE_API_BASE = "http://147.50.240.76:3001/api"
 
 # --------- Helper Functions ---------
 def clean_amount(text):
